@@ -1,0 +1,1209 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#07111c">
+    <title>SmartStick Sentinel</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --ink: #edf7ff;
+            --muted: #8ca4b9;
+            --cyan: #55e4f5;
+            --cyan-dim: #1a8297;
+            --surface: rgba(12, 27, 43, 0.88);
+            --line: rgba(105, 205, 225, 0.16);
+            --status-color: #45db87;
+            --display: "Trebuchet MS", "Segoe UI", sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            min-width: 320px;
+            min-height: 100vh;
+            margin: 0;
+            color: var(--ink);
+            background:
+                radial-gradient(ellipse at 12% 6%, rgba(0, 177, 204, 0.13), transparent 31rem),
+                radial-gradient(ellipse at 92% 56%, rgba(23, 91, 141, 0.15), transparent 34rem),
+                linear-gradient(135deg, #07111c 0%, #0a1927 50%, #08131f 100%);
+            font-family: "Segoe UI", Tahoma, sans-serif;
+        }
+
+        body::before {
+            position: fixed;
+            z-index: 0;
+            inset: 0;
+            pointer-events: none;
+            content: "";
+            opacity: 0.16;
+            background-image:
+                radial-gradient(circle, rgba(82, 228, 245, 0.8) 1px, transparent 1.8px),
+                linear-gradient(90deg, transparent 49.7%, rgba(76, 194, 218, 0.16) 50%, transparent 50.3%),
+                linear-gradient(0deg, transparent 49.7%, rgba(76, 194, 218, 0.12) 50%, transparent 50.3%);
+            background-size: 92px 92px, 160px 160px, 160px 160px;
+            mask-image: linear-gradient(115deg, #000 0%, transparent 72%);
+        }
+
+        body::after {
+            position: fixed;
+            z-index: 0;
+            right: -130px;
+            bottom: -240px;
+            width: 560px;
+            height: 560px;
+            pointer-events: none;
+            content: "";
+            border: 1px solid rgba(79, 208, 231, 0.13);
+            border-radius: 50%;
+            box-shadow: 0 0 0 42px rgba(79, 208, 231, 0.025), 0 0 0 92px rgba(79, 208, 231, 0.02);
+            animation: orbit-drift 32s linear infinite;
+        }
+
+        @keyframes orbit-drift { to { transform: rotate(360deg); } }
+        @keyframes signal-breathe { 50% { opacity: 0.62; transform: scale(0.92); } }
+
+        .app-shell {
+            position: relative;
+            z-index: 1;
+            width: min(1320px, 100%);
+            margin: 0 auto;
+            padding: 34px clamp(18px, 4vw, 54px) 48px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            padding-bottom: 27px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .brand-lockup { display: flex; align-items: center; gap: 15px; }
+        .brand-mark {
+            display: grid;
+            width: 42px;
+            height: 42px;
+            place-items: center;
+            border: 1px solid rgba(85, 228, 245, 0.42);
+            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(31, 119, 143, 0.32), rgba(9, 31, 47, 0.85));
+            box-shadow: inset 0 0 18px rgba(85, 228, 245, 0.08), 0 0 26px rgba(33, 198, 222, 0.08);
+        }
+        .brand-mark::before {
+            width: 12px;
+            height: 24px;
+            content: "";
+            border: 2px solid var(--cyan);
+            border-top-width: 4px;
+            border-radius: 7px 7px 4px 4px;
+            box-shadow: 0 0 12px rgba(85, 228, 245, 0.5);
+        }
+        .brand-name { margin: 0; font: 600 18px var(--display); letter-spacing: 0; }
+        .brand-subtitle { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+        .system-state {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: #b6d2df;
+            font-size: 12px;
+        }
+        .system-state::before {
+            width: 7px;
+            height: 7px;
+            content: "";
+            border-radius: 50%;
+            background: #53e89c;
+            box-shadow: 0 0 13px rgba(83, 232, 156, 0.76);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.04fr) minmax(360px, 0.96fr);
+            align-items: stretch;
+            gap: clamp(22px, 4vw, 48px);
+            padding-top: 34px;
+        }
+        .monitor-column { min-width: 0; }
+        .eyebrow {
+            margin: 0 0 12px;
+            color: var(--cyan);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+        }
+        .page-title {
+            margin: 0;
+            font: 600 clamp(30px, 4vw, 43px)/1.12 var(--display);
+            letter-spacing: 0;
+        }
+        .intro { margin: 12px 0 27px; color: #9fb5c7; font-size: 14px; line-height: 1.6; }
+
+        .monitor-panel, .device-panel, .log-panel {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: linear-gradient(150deg, rgba(16, 37, 56, 0.88), rgba(9, 24, 39, 0.9));
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+        }
+        .monitor-panel { padding: 23px; }
+        .section-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 19px;
+        }
+        .section-heading h2, .log-heading h2 {
+            margin: 0;
+            font: 600 16px var(--display);
+            letter-spacing: 0;
+        }
+        .sim-badge {
+            padding: 6px 9px;
+            border: 1px solid rgba(85, 228, 245, 0.2);
+            border-radius: 5px;
+            color: #9cebf3;
+            background: rgba(30, 133, 151, 0.12);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.7px;
+        }
+        .input-label { display: block; margin-bottom: 8px; color: #abc0d0; font-size: 12px; }
+        .input-row { display: flex; align-items: stretch; gap: 9px; }
+        #distanceInput {
+            width: 100%;
+            min-width: 0;
+            height: 47px;
+            padding: 0 13px;
+            border: 1px solid rgba(99, 191, 212, 0.3);
+            border-radius: 7px;
+            outline: none;
+            color: var(--ink);
+            background: rgba(4, 16, 27, 0.82);
+            font: 600 16px "Segoe UI", sans-serif;
+        }
+        #distanceInput:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(85, 228, 245, 0.1); }
+        .unit { display: flex; align-items: center; padding-right: 12px; color: var(--muted); font-size: 12px; }
+        .input-wrap { display: flex; flex: 1; border: 1px solid rgba(99, 191, 212, 0.3); border-radius: 7px; background: rgba(4, 16, 27, 0.82); }
+        .input-wrap #distanceInput { border: 0; background: transparent; }
+        .input-wrap:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(85, 228, 245, 0.1); }
+        .input-wrap #distanceInput:focus { box-shadow: none; }
+
+        button {
+            display: inline-flex;
+            min-height: 42px;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 14px;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            color: #04151d;
+            background: linear-gradient(120deg, #63ecf1, #36c4df);
+            font: 700 12px "Segoe UI", sans-serif;
+            cursor: pointer;
+            transition: filter 150ms ease, transform 150ms ease;
+        }
+        button:hover { filter: brightness(1.09); }
+        button:active { transform: translateY(1px); }
+        button:focus-visible { outline: 2px solid #b6f8fb; outline-offset: 3px; }
+        .check-button { min-width: 132px; }
+        .button-icon { font-size: 15px; line-height: 1; }
+        .hint { margin: 9px 0 20px; color: #718a9f; font-size: 11px; }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding-top: 17px;
+            border-top: 1px solid rgba(105, 205, 225, 0.11);
+        }
+        .status-label { color: #8fa7ba; font-size: 12px; }
+        #hazard {
+            padding: 7px 10px;
+            border: 1px solid rgba(85, 228, 245, 0.22);
+            border-radius: 5px;
+            color: #b9f3f7;
+            background: rgba(24, 122, 140, 0.18);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.7px;
+        }
+        #advice { min-height: 20px; margin: 12px 0 0; color: #b5c6d4; font-size: 12px; line-height: 1.55; }
+
+        .counter-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 9px;
+            margin-top: 13px;
+        }
+        .counter {
+            min-width: 0;
+            padding: 12px 11px;
+            border: 1px solid rgba(105, 205, 225, 0.12);
+            border-radius: 7px;
+            background: rgba(8, 22, 35, 0.7);
+        }
+        .counter-value { display: block; color: #eaf7ff; font: 600 19px var(--display); }
+        .counter-label { display: block; margin-top: 5px; color: #829caf; font-size: 10px; }
+        .counter[data-tone="red"] .counter-value { color: #ff7277; }
+        .counter[data-tone="orange"] .counter-value { color: #ffad66; }
+        .counter[data-tone="yellow"] .counter-value { color: #f4d76a; }
+        .counter[data-tone="green"] .counter-value { color: #6ae3a0; }
+
+        .device-panel {
+            position: relative;
+            min-height: 535px;
+            overflow: hidden;
+            border-color: rgba(85, 228, 245, 0.28);
+            background:
+                radial-gradient(ellipse at 51% 42%, rgba(21, 118, 140, 0.14), transparent 45%),
+                linear-gradient(155deg, rgba(14, 35, 52, 0.9), rgba(7, 20, 33, 0.94));
+            box-shadow: 0 0 38px rgba(30, 190, 215, 0.08), inset 0 0 40px rgba(32, 139, 160, 0.035);
+            --status-color: #45db87;
+        }
+        .device-panel::before {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            content: "";
+            opacity: 0.26;
+            background: linear-gradient(90deg, transparent 49.8%, rgba(71, 188, 211, 0.15) 50%, transparent 50.2%), linear-gradient(rgba(71, 188, 211, 0.08) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 64px;
+            mask-image: linear-gradient(transparent, #000 20%, #000 83%, transparent);
+        }
+        .device-panel[data-status="DANGER"], .device-panel[data-status="INVALID INPUT"] { --status-color: #ff4c59; }
+        .device-panel[data-status="SENSOR FAULT"] { --status-color: #ff7277; }
+        .device-panel[data-status="WARNING"] { --status-color: #ff9b45; }
+        .device-panel[data-status="CAUTION"] { --status-color: #f5d64b; }
+        .device-panel[data-status="SAFE"] { --status-color: #45db87; }
+        .device-heading {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 20px 21px 0;
+        }
+        .device-heading .eyebrow { margin: 0; font-size: 9px; letter-spacing: 1.45px; }
+        .device-live { color: #738d9f; font-size: 9px; letter-spacing: 0.7px; text-transform: uppercase; }
+        .device-live::before { display: inline-block; width: 5px; height: 5px; margin: 0 6px 1px 0; content: ""; border-radius: 50%; background: var(--status-color); box-shadow: 0 0 9px var(--status-color); }
+        .device-stage {
+            position: absolute;
+            inset: 55px 0 48px;
+            overflow: hidden;
+            background: radial-gradient(ellipse at 51% 80%, rgba(45, 177, 196, 0.1), transparent 45%);
+        }
+        .stage-ring {
+            position: absolute;
+            top: 48%;
+            left: 50%;
+            width: 255px;
+            aspect-ratio: 1;
+            border: 1px solid rgba(85, 228, 245, 0.12);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 26px rgba(85, 228, 245, 0.018), inset 0 0 40px rgba(85, 228, 245, 0.025);
+        }
+        .stage-ring::before, .stage-ring::after { position: absolute; inset: 20px; content: ""; border: 1px dashed rgba(85, 228, 245, 0.12); border-radius: 50%; }
+        .stage-ring::after { inset: -46px; border-style: solid; opacity: 0.42; }
+        .stage-floor {
+            position: absolute;
+            bottom: 4%;
+            left: 50%;
+            width: 220px;
+            height: 33px;
+            border: 1px solid rgba(85, 228, 245, 0.16);
+            border-radius: 50%;
+            background: radial-gradient(ellipse, rgba(48, 205, 221, 0.1), transparent 68%);
+            filter: blur(1px);
+            transform: translateX(-50%);
+        }
+        .stick-wrap {
+            position: absolute;
+            z-index: 2;
+            top: 46%;
+            left: 50%;
+            width: 230px;
+            height: 390px;
+            transform: translate(-50%, -50%);
+            filter: drop-shadow(20px 20px 13px rgba(0, 0, 0, 0.43));
+        }
+        .stick-shaft {
+            position: absolute;
+            top: 91px;
+            left: 110px;
+            width: 17px;
+            height: 270px;
+            border: 1px solid #465464;
+            border-radius: 9px 8px 7px 8px;
+            background: linear-gradient(90deg, #121923 0%, #3b4652 18%, #202a36 39%, #101720 70%, #596775 87%, #202b37 100%);
+            box-shadow: inset 2px 0 2px rgba(255, 255, 255, 0.18), inset -2px 0 3px rgba(0, 0, 0, 0.85), 2px 0 2px rgba(150, 199, 213, 0.28);
+            transform: rotate(5deg);
+            transform-origin: top center;
+        }
+        .stick-shaft::before {
+            position: absolute;
+            top: 21px;
+            left: 5px;
+            width: 1px;
+            height: 200px;
+            content: "";
+            background: linear-gradient(transparent, rgba(176, 229, 239, 0.32), transparent);
+        }
+        .shaft-collar {
+            position: absolute;
+            z-index: 2;
+            top: 300px;
+            left: 109px;
+            width: 19px;
+            height: 10px;
+            border: 1px solid #657484;
+            border-radius: 3px;
+            background: linear-gradient(#687580, #222c37 45%, #111820);
+            transform: rotate(5deg);
+        }
+        .handle-arm {
+            position: absolute;
+            top: 45px;
+            left: 104px;
+            width: 73px;
+            height: 66px;
+            border: 1px solid #485561;
+            border-bottom: 0;
+            border-radius: 11px 28px 0 0;
+            background: linear-gradient(112deg, #151d27 0%, #3b4651 24%, #232d38 42%, #111820 75%, #54616c 100%);
+            box-shadow: inset 2px 1px 2px rgba(255, 255, 255, 0.22), inset -3px 0 4px rgba(0, 0, 0, 0.65);
+            transform: rotate(5deg);
+        }
+        .handle-grip {
+            position: absolute;
+            top: 32px;
+            left: 135px;
+            width: 92px;
+            height: 27px;
+            border: 1px solid #626d76;
+            border-radius: 8px 16px 16px 8px;
+            background: repeating-linear-gradient(0deg, #161e27 0 3px, #343f49 4px, #1b242d 6px);
+            box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.17), 0 3px 5px rgba(0, 0, 0, 0.55);
+            transform: rotate(-5deg);
+        }
+        .grip-end {
+            position: absolute;
+            top: 29px;
+            left: 217px;
+            width: 12px;
+            height: 33px;
+            border: 1px solid #65727d;
+            border-radius: 4px 12px 12px 4px;
+            background: linear-gradient(90deg, #202933, #78838a, #242c34);
+            transform: rotate(-5deg);
+        }
+        .sensor-pod {
+            position: absolute;
+            z-index: 3;
+            top: 114px;
+            left: 91px;
+            width: 44px;
+            height: 29px;
+            border: 1px solid #61707c;
+            border-radius: 7px;
+            background: linear-gradient(145deg, #4a5763, #1a232d 42%, #394550);
+            box-shadow: 0 4px 7px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+            transform: rotate(5deg);
+        }
+        .sensor-eye {
+            position: absolute;
+            top: 7px;
+            left: 7px;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #98a8b2;
+            border-radius: 50%;
+            background: radial-gradient(circle at 38% 35%, #c0ffff 0 9%, #2be0f1 14%, #0b596b 51%, #09131c 72%);
+            box-shadow: 0 0 9px rgba(60, 230, 247, 0.52);
+        }
+        .sensor-eye:last-child { left: 25px; }
+        .power-unit {
+            position: absolute;
+            z-index: 3;
+            top: 165px;
+            left: 102px;
+            width: 33px;
+            height: 65px;
+            border: 1px solid #596671;
+            border-radius: 7px;
+            background: linear-gradient(90deg, #141c25, #48545f 24%, #222c36 52%, #121922 83%, #52606b);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 3px 7px rgba(0, 0, 0, 0.5);
+            transform: rotate(5deg);
+        }
+        .power-unit::before {
+            position: absolute;
+            top: 13px;
+            left: 6px;
+            width: 18px;
+            height: 3px;
+            content: "";
+            border-radius: 3px;
+            background: #82909a;
+            box-shadow: 0 7px #37434d, 0 14px #37434d;
+        }
+        .indicator-lamp {
+            position: absolute;
+            top: 39px;
+            left: 12px;
+            width: 9px;
+            height: 9px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            background: var(--status-color);
+            box-shadow: 0 0 5px var(--status-color), 0 0 15px var(--status-color);
+            animation: signal-breathe 2.6s ease-in-out infinite;
+        }
+        .buzzer {
+            position: absolute;
+            z-index: 3;
+            top: 240px;
+            left: 105px;
+            display: flex;
+            width: 26px;
+            height: 24px;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            border: 1px solid #52606b;
+            border-radius: 5px;
+            background: linear-gradient(120deg, #39444e, #151d26);
+            transform: rotate(5deg);
+        }
+        .buzzer i { width: 2px; height: 10px; border-radius: 2px; background: #0a1118; box-shadow: 1px 0 rgba(198, 217, 224, 0.25); }
+        .water-sensor {
+            position: absolute;
+            z-index: 3;
+            top: 307px;
+            left: 102px;
+            width: 33px;
+            height: 16px;
+            border: 1px solid #5c6973;
+            border-radius: 4px;
+            background: linear-gradient(#56636c, #171f28 60%, #46525d);
+            transform: rotate(5deg);
+        }
+        .water-sensor::before, .water-sensor::after { position: absolute; top: 4px; width: 6px; height: 6px; content: ""; border: 1px solid #83dce5; border-radius: 50%; background: #123d49; }
+        .water-sensor::before { left: 6px; }
+        .water-sensor::after { right: 6px; }
+        .rubber-tip {
+            position: absolute;
+            z-index: 3;
+            top: 354px;
+            left: 105px;
+            width: 25px;
+            height: 31px;
+            border: 1px solid #303b44;
+            border-radius: 5px 5px 10px 10px;
+            background: repeating-linear-gradient(0deg, #11171d 0 3px, #29323a 4px, #10171d 6px);
+            box-shadow: inset 2px 0 2px rgba(255, 255, 255, 0.12), 0 4px 4px rgba(0, 0, 0, 0.6);
+            transform: rotate(5deg);
+        }
+        .callout {
+            position: absolute;
+            z-index: 4;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: #a9c0d0;
+            font-size: 9px;
+            white-space: nowrap;
+        }
+        .callout::before { width: 5px; height: 5px; flex: 0 0 5px; content: ""; border: 1px solid var(--cyan); border-radius: 50%; background: #0b2430; box-shadow: 0 0 7px rgba(85, 228, 245, 0.55); }
+        .callout::after { position: absolute; height: 1px; content: ""; background: linear-gradient(90deg, rgba(85, 228, 245, 0.68), rgba(85, 228, 245, 0.08)); }
+        .callout-sensor { top: 27%; left: 6%; }
+        .callout-sensor::after { top: 50%; left: calc(100% + 6px); width: clamp(22px, 5vw, 48px); }
+        .callout-power { top: 43%; right: 7%; flex-direction: row-reverse; }
+        .callout-power::after { top: 50%; right: calc(100% + 6px); width: clamp(18px, 4vw, 38px); transform: rotate(180deg); }
+        .callout-alert { top: 60%; left: 7%; }
+        .callout-alert::after { top: 50%; left: calc(100% + 6px); width: clamp(20px, 5vw, 45px); }
+        .callout-water { top: 75%; right: 7%; flex-direction: row-reverse; }
+        .callout-water::after { top: 50%; right: calc(100% + 6px); width: clamp(20px, 4vw, 40px); transform: rotate(180deg); }
+        .device-caption {
+            position: absolute;
+            z-index: 2;
+            right: 14px;
+            bottom: 18px;
+            left: 14px;
+            margin: 0;
+            color: #718a9b;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .log-panel { margin-top: 25px; overflow: hidden; }
+        .log-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px 19px;
+            border-bottom: 1px solid var(--line);
+        }
+        .log-heading p { margin: 5px 0 0; color: #7e96a9; font-size: 10px; }
+        .log-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+        .secondary-button {
+            min-height: 32px;
+            padding: 0 10px;
+            border-color: rgba(121, 170, 190, 0.22);
+            color: #b1c5d4;
+            background: rgba(18, 39, 56, 0.76);
+            font-size: 10px;
+        }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 11px 16px; color: #7892a5; background: rgba(5, 17, 27, 0.4); font-size: 9px; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; }
+        td { padding: 11px 16px; border-top: 1px solid rgba(105, 205, 225, 0.08); color: #c2d3df; font-size: 11px; }
+        .empty-row td { height: 50px; color: #728a9b; text-align: center; }
+        .log-status { font-size: 9px; font-weight: 800; letter-spacing: 0.5px; }
+        .log-status[data-status="DANGER"], .log-status[data-status="INVALID INPUT"] { color: #ff737b; }
+        .log-status[data-status="WARNING"] { color: #ffb16d; }
+        .log-status[data-status="CAUTION"] { color: #f5da71; }
+        .log-status[data-status="SAFE"] { color: #73e4a6; }
+        .footer-note { margin: 15px 0 0; color: #627b8e; font-size: 10px; text-align: center; }
+
+        @media (max-width: 900px) {
+            .dashboard-grid { grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr); gap: 20px; }
+            .monitor-panel { padding: 18px; }
+            .device-panel { min-height: 510px; }
+            .callout { font-size: 8px; }
+        }
+        @media (max-width: 720px) {
+            .app-shell { padding-top: 22px; }
+            .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+            .device-panel { min-height: 510px; }
+            .device-stage { inset: 55px 0 48px; }
+            .callout-sensor { left: 12%; }
+            .callout-alert { left: 13%; }
+            .callout-power, .callout-water { right: 12%; }
+        }
+        @media (max-width: 440px) {
+            .topbar { align-items: flex-start; }
+            .system-state { padding-top: 7px; font-size: 10px; }
+            .brand-subtitle { max-width: 185px; line-height: 1.4; }
+            .monitor-panel { padding: 16px; }
+            .input-row { flex-direction: column; }
+            .check-button { width: 100%; }
+            .counter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .device-panel { min-height: 480px; }
+            .stick-wrap { transform: translate(-50%, -50%) scale(0.88); }
+            .callout-sensor, .callout-alert { left: 4%; }
+            .callout-power, .callout-water { right: 4%; }
+            .log-heading { align-items: flex-start; flex-direction: column; }
+            th, td { padding-right: 11px; padding-left: 11px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+        }
+
+        /* Engineering-demo visual system */
+        :root {
+            --ink: #e7edf2;
+            --muted: #9ba9b5;
+            --cyan: #54bed0;
+            --cyan-dim: #348b9b;
+            --surface: #17232e;
+            --line: #34434f;
+            --status-color: #69c99a;
+            --display: "Segoe UI", Tahoma, sans-serif;
+        }
+        body {
+            color: var(--ink);
+            background-color: #0c141c;
+            background-image: linear-gradient(rgba(144, 171, 190, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(144, 171, 190, 0.025) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+        body::before { display: none; }
+        body::after { display: none; }
+        .app-shell { width: min(1240px, 100%); padding-top: 24px; }
+        .topbar { padding-bottom: 17px; border-color: #2b3945; }
+        .brand-lockup { gap: 11px; }
+        .brand-mark { width: 32px; height: 32px; border-color: #52616d; border-radius: 6px; background: #1b2934; box-shadow: none; }
+        .brand-mark::before { width: 9px; height: 19px; border-color: #68c5d2; border-radius: 4px 4px 2px 2px; box-shadow: none; }
+        .brand-name { font-size: 16px; }
+        .brand-subtitle { color: #94a2ad; font-size: 11px; }
+        .system-state { color: #afbbc4; font-size: 11px; }
+        .system-state::before { width: 7px; height: 7px; background: #61bd8d; box-shadow: none; }
+        .dashboard-grid { grid-template-columns: minmax(0, 1fr) minmax(350px, 0.92fr); gap: 30px; padding-top: 27px; }
+        .eyebrow { margin-bottom: 9px; color: #75c6d2; font-size: 9px; letter-spacing: 1.15px; }
+        .page-title { font-size: 25px; font-weight: 600; line-height: 1.25; }
+        .intro { margin: 8px 0 19px; color: #9ba9b5; font-size: 12px; }
+        .monitor-panel, .device-panel, .log-panel { border-color: #34434f; border-radius: 7px; background: #141f29; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16); }
+        .monitor-panel { padding: 19px; }
+        .section-heading { margin-bottom: 16px; }
+        .section-heading h2, .log-heading h2 { font-size: 14px; }
+        .sim-badge { border-color: #405461; border-radius: 4px; color: #9cdae2; background: #1c303a; }
+        #distanceInput { color: var(--ink); }
+        .input-wrap { border-color: #44535e; border-radius: 5px; background: #0e171f; }
+        .input-wrap:focus-within { border-color: #68bdc9; box-shadow: 0 0 0 2px rgba(104, 189, 201, 0.12); }
+        button { border-radius: 5px; color: #10212a; background: #73c6d0; transition: background-color 120ms ease; }
+        button:hover { filter: none; background: #8bd4dc; }
+        button:active { transform: none; }
+        button:focus-visible { outline-color: #b8e8ec; }
+        .check-button { min-height: 42px; }
+        .button-icon { display: none; }
+        .hint { margin-bottom: 15px; color: #84939e; }
+        .status-row { padding-top: 14px; border-color: #2b3944; }
+        .status-label { color: #a7b4bd; }
+        #hazard { border-radius: 4px; font-size: 10px; }
+        #advice { color: #b6c1c9; font-size: 12px; }
+        .counter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-top: 19px; border-top: 1px solid #34434f; border-bottom: 1px solid #34434f; }
+        .counter { padding: 11px 12px; border: 0; border-right: 1px solid #34434f; border-radius: 0; background: transparent; }
+        .counter:first-child { padding-left: 0; }
+        .counter:last-child { border-right: 0; }
+        .counter-value { font-size: 18px; }
+        .counter-label { color: #9ba9b5; font-size: 10px; }
+        .counter[data-tone="red"] .counter-value, .counter[data-tone="orange"] .counter-value, .counter[data-tone="yellow"] .counter-value, .counter[data-tone="green"] .counter-value { color: #dce5ea; }
+        .device-panel {
+            min-height: 475px;
+            border-color: #40515d;
+            background: #121d26;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.17);
+            --status-color: #69c99a;
+        }
+        .device-panel::before { display: none; }
+        .device-heading { padding: 17px 18px 0; }
+        .device-heading .eyebrow { color: #c1ccd3; font-size: 9px; letter-spacing: 0.8px; }
+        .device-live { color: #98a6b0; }
+        .device-live::before { background: var(--status-color); box-shadow: none; }
+        .device-stage { inset: 45px 0 42px; background: none; }
+        .stage-ring { width: 205px; border-color: rgba(157, 180, 192, 0.12); box-shadow: none; }
+        .stage-ring::before, .stage-ring::after { border-color: rgba(157, 180, 192, 0.1); border-style: solid; }
+        .stage-ring::after { display: none; }
+        .stage-floor { width: 185px; height: 25px; border-color: rgba(160, 181, 192, 0.18); background: rgba(141, 162, 175, 0.05); filter: none; }
+        .stick-wrap { top: 47%; width: 210px; filter: drop-shadow(10px 12px 8px rgba(0, 0, 0, 0.4)); transform: translate(-50%, -50%) scale(0.9); }
+        .stick-shaft { background: linear-gradient(90deg, #111820, #35414a 22%, #202a32 46%, #141b22 78%, #46515a); box-shadow: inset 1px 0 rgba(255, 255, 255, 0.13), inset -2px 0 3px rgba(0, 0, 0, 0.7); }
+        .stick-shaft::before { background: linear-gradient(transparent, rgba(207, 220, 225, 0.17), transparent); }
+        .handle-arm, .handle-grip, .grip-end, .sensor-pod, .power-unit, .buzzer, .water-sensor, .shaft-collar, .rubber-tip { box-shadow: inset 1px 0 rgba(255, 255, 255, 0.1), 0 2px 4px rgba(0, 0, 0, 0.35); }
+        .sensor-eye { background: radial-gradient(circle, #8de0e4 0 15%, #246c76 43%, #111920 75%); box-shadow: none; }
+        .indicator-lamp { width: 8px; height: 8px; border-color: rgba(255, 255, 255, 0.55); box-shadow: 0 0 4px var(--status-color); animation: none; }
+        .water-sensor::before, .water-sensor::after { border-color: #79b7bf; background: #28464c; }
+        .callout { color: #aebac2; font-size: 8px; }
+        .callout::before { border-color: #80c4ce; background: #172831; box-shadow: none; }
+        .callout::after { background: #708894; }
+        .callout-sensor { left: 5%; }
+        .callout-power { right: 5%; }
+        .callout-alert { left: 5%; }
+        .callout-water { right: 5%; }
+        .device-caption { color: #8f9da6; font-size: 10px; }
+        .log-panel { margin-top: 20px; }
+        .log-heading { padding: 14px 16px; border-color: #34434f; }
+        .log-heading p { color: #92a0aa; }
+        .secondary-button { border-color: #465660; color: #c1cbd1; background: #1a2731; }
+        .secondary-button:hover { color: #eef4f6; background: #263641; }
+        th { color: #a2afb8; background: #111b23; }
+        td { border-color: #293640; color: #d0d9de; }
+        .empty-row td { color: #9ba9b5; }
+        .log-status[data-status="DANGER"], .log-status[data-status="INVALID INPUT"] { color: #f08383; }
+        .log-status[data-status="WARNING"] { color: #e7ad72; }
+        .log-status[data-status="CAUTION"] { color: #ddca75; }
+        .log-status[data-status="SAFE"] { color: #76c99b; }
+        .footer-note { color: #87949d; }
+        @media (max-width: 900px) {
+            .dashboard-grid { grid-template-columns: minmax(0, 1fr) minmax(300px, 0.9fr); }
+            .device-panel { min-height: 455px; }
+        }
+        @media (max-width: 720px) {
+            .dashboard-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+            .device-panel { min-height: 470px; }
+        }
+        @media (max-width: 440px) {
+            .app-shell { padding-right: 16px; padding-left: 16px; }
+            .counter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .counter:nth-child(2) { border-right: 0; }
+            .counter:nth-child(n+3) { border-top: 1px solid #34434f; }
+            .counter:nth-child(3) { padding-left: 0; }
+            .stick-wrap { transform: translate(-50%, -50%) scale(0.85); }
+        }
+    </style>
+    <style>
+        :root { --focus: #a9f2f7; }
+        html { scroll-behavior: smooth; }
+        body { font-size: var(--text-scale, 1rem); }
+        .topbar { flex-wrap: wrap; }
+        .top-controls, .control-row, .scenario-list, .mode-switch, .alert-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .top-controls { justify-content: flex-end; }
+        .tool-panel { display: flex; flex-wrap: wrap; align-items: end; gap: 14px 22px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+        .tool-panel label, .control-label { display: grid; gap: 6px; color: #d4e0e7; font-size: 12px; }
+        select, input[type="range"] { min-height: 44px; }
+        select { padding: 0 34px 0 10px; border: 1px solid #526572; border-radius: 5px; color: var(--ink); background: #111d27; font: inherit; }
+        button, select, input { accent-color: #73c6d0; }
+        button { min-height: 44px; }
+        button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+        .secondary-button { min-height: 44px; padding: 0 12px; font-size: 12px; }
+        .mode-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
+        .mode-switch button { border: 1px solid #526572; color: #e7edf2; background: #1a2731; }
+        .mode-switch button[aria-pressed="true"] { border-color: #82d4de; color: #07171d; background: #8bd4dc; }
+        .disclosure { width: 100%; border-top: 1px solid #34434f; padding-top: 12px; }
+        .disclosure summary { width: fit-content; padding: 8px 0; color: #d7e5ea; cursor: pointer; }
+        .disclosure-content { display: flex; flex-wrap: wrap; gap: 16px 24px; padding: 10px 0 2px; }
+        .check-control { display: flex !important; align-items: center; gap: 9px !important; min-height: 44px; }
+        .check-control input { width: 20px; height: 20px; }
+        .scenario-panel, .test-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid #34434f; }
+        .scenario-panel h3, .test-panel h3 { margin: 0 0 10px; font-size: 13px; }
+        .scenario-list button { color: #dbe7eb; border-color: #526572; background: #1a2731; }
+        .explain, .support-note { color: #aab8c1; font-size: 12px; line-height: 1.6; }
+        .error-message { min-height: 1.5em; margin: 6px 0 0; color: #ffc0c0; font-size: 12px; }
+        .alert-actions { margin-top: 10px; }
+        .status-tag { display: inline-flex; min-height: 30px; align-items: center; gap: 7px; padding: 4px 10px; border: 1px solid #7e8d98; border-radius: 4px; color: #fff; background: #293945; font-size: 12px; font-weight: 800; }
+        #hazard[data-status="DANGER"] { border: 2px solid #ffb0b0; background: #682a32; }
+        #hazard[data-status="WARNING"] { border: 2px solid #ffd0a0; background: #604020; }
+        #hazard[data-status="CAUTION"] { border: 2px solid #f3e6a5; background: #51491e; }
+        #hazard[data-status="SAFE"] { border: 2px solid #a7e2bd; background: #234b39; }
+        #hazard[data-status="INVALID INPUT"], #hazard[data-status="SENSOR FAULT"] { border: 2px solid #ffc2c2; background: #632d35; }
+        .details-only[hidden] { display: none !important; }
+        .simple-mode .technical-only { display: none !important; }
+        .counter-grid { grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); }
+        .table-wrap { max-height: 390px; overflow: auto; }
+        th { position: sticky; top: 0; z-index: 1; }
+        .empty-row td { padding: 22px; }
+        .contrast-mode { --ink: #fff; --muted: #fff; --line: #fff; }
+        .contrast-mode, .contrast-mode .monitor-panel, .contrast-mode .device-panel, .contrast-mode .log-panel { background-color: #000 !important; }
+        .contrast-mode :is(p, span, label, th, td, h1, h2, h3, button, summary, .footer-note) { color: #fff; }
+        .contrast-mode :is(button, select, input, .status-tag) { border: 2px solid #ffea00; background: #000; color: #fff; }
+        .simplified .technical-only, .simplified .device-panel, .simplified .counter-grid { display: none !important; }
+        .simplified .app-shell { max-width: 850px; }
+        .simplified .monitor-panel { border-width: 2px; }
+        .simplified .page-title { font-size: 30px; }
+        .vibration-simulated { outline: 3px solid #bde8ed; outline-offset: -5px; }
+        .fault-status { color: #fff; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        @media (max-width: 720px) { .top-controls { justify-content: flex-start; } .tool-panel { align-items: stretch; } .disclosure-content { display: grid; } }
+        @media (prefers-contrast: more) { :root { --line: #aebbc5; } button, input, select { border-width: 2px; } }
+        @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
+    </style>
+</head>
+<body>
+    <main class="app-shell">
+        <header class="topbar">
+            <div class="brand-lockup">
+                <span class="brand-mark" aria-hidden="true"></span>
+                <div>
+                    <p class="brand-name">SmartStick Sentinel</p>
+                    <p class="brand-subtitle" data-i18n="subtitle">Assistive mobility safety dashboard</p>
+                </div>
+            </div>
+            <div class="top-controls">
+                <div class="system-state" role="status" data-i18n="simIndicator">SIMULATION MODE · No hardware connected</div>
+                <label><span data-i18n="language">Language</span>
+                    <select id="languageSelect"><option value="en">English</option><option value="ta">தமிழ்</option></select>
+                </label>
+            </div>
+        </header>
+
+        <section class="tool-panel" id="accessibilityPanel" aria-label="Accessibility and alert settings">
+            <div class="mode-row" style="width:100%">
+                <strong data-i18n="interfaceMode">Interface mode</strong>
+                <div class="mode-switch" id="modeGroup" role="group" aria-label="Interface mode">
+                    <button type="button" id="simpleMode" aria-pressed="false" data-i18n="simpleMode">Simple</button>
+                    <button type="button" id="technicalMode" aria-pressed="true" data-i18n="technicalMode">Technical</button>
+                </div>
+            </div>
+            <details class="disclosure">
+                <summary data-i18n="accessSettings">Accessibility and alert settings</summary>
+                <div class="disclosure-content">
+                    <label><span data-i18n="textSize">Text size</span>
+                        <select id="textSize"><option value="1">100%</option><option value="1.15">115%</option><option value="1.3">130%</option></select>
+                    </label>
+                    <label class="check-control"><input type="checkbox" id="highContrast"><span data-i18n="highContrast">High contrast</span></label>
+                    <label class="check-control"><input type="checkbox" id="simplified"><span data-i18n="simplified">Simplified interface</span></label>
+                    <label class="check-control"><input type="checkbox" id="speechEnabled"><span data-i18n="speech">Spoken warnings (browser speech)</span></label>
+                    <label class="control-label"><span data-i18n="speechRate">Speech rate</span><input id="speechRate" type="range" min="0.7" max="1.4" step="0.1" value="1" aria-label="Speech rate"></label>
+                    <label class="check-control"><input type="checkbox" id="vibrationEnabled"><span data-i18n="vibration">Vibration feedback (device API if available)</span></label>
+                    <label class="check-control"><input type="checkbox" id="persistSession"><span data-i18n="remember">Remember this session in this browser</span></label>
+                    <p class="support-note" data-i18n="localNote">Saved records stay in this browser only. Speech and vibration depend on browser support and permission; no stick hardware is controlled.</p>
+                </div>
+            </details>
+        </section>
+
+        <section class="dashboard-grid" id="dashboardRegion" aria-label="Sensor monitoring dashboard">
+            <div class="monitor-column">
+                <p class="eyebrow" data-i18n="eyebrow">ASSISTIVE MOBILITY / SENSOR MONITORING</p>
+                <h1 class="page-title" data-i18n="pageTitle">Sensor monitoring</h1>
+                <p class="intro" data-i18n="intro">Enter a demonstration distance to see its classification. This is not a live measurement.</p>
+
+                <section class="monitor-panel" aria-labelledby="detection-heading">
+                    <div class="section-heading">
+                        <h2 id="detection-heading" data-i18n="obstacleDetection">Obstacle detection</h2>
+                        <span class="sim-badge" data-i18n="simBadge">SIMULATION MODE</span>
+                    </div>
+                    <label class="input-label" for="distanceInput" data-i18n="distanceLabel">Simulated distance</label>
+                    <div class="input-row">
+                        <div class="input-wrap">
+                            <input type="text" id="distanceInput" value="120" inputmode="decimal" autocomplete="off" aria-describedby="distance-hint input-error">
+                            <span class="unit" data-i18n="cm" aria-hidden="true">cm</span>
+                        </div>
+                        <button class="check-button" id="checkButton" type="button" data-i18n="check">Classify distance</button>
+                    </div>
+                    <p class="hint" id="distance-hint" data-i18n="rangeHint">Accepted demonstration range: 0–400 cm. Thresholds are examples only.</p>
+                    <p class="error-message" id="input-error" aria-live="polite"></p>
+                    <div class="status-row">
+                        <span class="status-label" data-i18n="hazardStatus">Hazard status</span>
+                        <span id="hazard" class="status-tag" data-status="NOT CHECKED">Not checked</span>
+                    </div>
+                    <p id="advice" data-i18n="initialAdvice">Enter a distance and classify it to begin.</p>
+                    <div class="alert-actions"><button class="secondary-button" id="acknowledgeButton" type="button" disabled data-i18n="acknowledge">Acknowledge alert</button><span class="support-note" id="feedbackState" role="status"></span></div>
+                    <div class="scenario-panel">
+                        <h3 data-i18n="scenarios">Reproducible scenarios</h3>
+                        <div class="scenario-list" id="scenarioGroup" role="group" aria-label="Test scenarios">
+                            <button type="button" data-scenario="25" data-i18n="scenario25">25 cm · Danger</button><button type="button" data-scenario="75" data-i18n="scenario75">75 cm · Warning</button><button type="button" data-scenario="125" data-i18n="scenario125">125 cm · Caution</button><button type="button" data-scenario="220" data-i18n="scenario220">220 cm · Safe</button><button type="button" data-scenario="sudden" data-i18n="sudden">Sudden change</button><button type="button" data-scenario="invalid" data-i18n="invalidScenario">Invalid input</button><button type="button" data-scenario="fault" data-i18n="sensorFault">Sensor fault</button>
+                        </div>
+                        <p class="explain" data-i18n="thresholdNote">Demonstration thresholds only: danger under 50 cm, warning under 100 cm, caution through 150 cm. Real-world validation is required before any safety use.</p>
+                    </div>
+                    <div class="test-panel technical-only">
+                        <h3 data-i18n="alertTest">Alert test panel</h3>
+                        <div class="scenario-list" id="alertGroup" role="group" aria-label="Simulated alert tests">
+                            <button type="button" data-alert-test="SAFE" data-i18n="testSafe">Test safe alert</button><button type="button" data-alert-test="CAUTION" data-i18n="testCaution">Test caution alert</button><button type="button" data-alert-test="WARNING" data-i18n="testWarning">Test warning alert</button><button type="button" data-alert-test="DANGER" data-i18n="testDanger">Test danger alert</button><button type="button" data-alert-test="SENSOR FAULT" data-i18n="testFault">Test sensor fault</button>
+                        </div>
+                    </div>
+                    <p class="sr-only" id="hazardAnnouncement" aria-live="polite" aria-atomic="true"></p>
+                </section>
+
+                <section class="counter-grid" id="metricsRegion" aria-label="Session metrics">
+                    <div class="counter"><span class="counter-value" id="totalChecks">0</span><span class="counter-label" data-i18n="eventCount">Logged events</span></div>
+                    <div class="counter"><span class="counter-value" id="validCount">0</span><span class="counter-label" data-i18n="validCount">Valid readings</span></div>
+                    <div class="counter"><span class="counter-value" id="invalidCount">0</span><span class="counter-label" data-i18n="invalidCount">Rejected input</span></div>
+                    <div class="counter"><span class="counter-value" id="dangerCount">0</span><span class="counter-label" data-i18n="dangerCount">Danger events</span></div>
+                </section>
+            </div>
+
+            <section class="device-panel" id="devicePanel" data-status="Not Checked" aria-label="SmartStick concept visualization">
+                <div class="device-heading">
+                    <p class="eyebrow" data-i18n="deviceHeading">DEVICE CONCEPT — SIMULATION ONLY</p>
+                    <span class="device-live" id="deviceLive">Standby</span>
+                </div>
+                <div class="device-stage" aria-hidden="true">
+                    <div class="stage-ring"></div>
+                    <div class="stick-wrap">
+                        <div class="handle-arm"></div>
+                        <div class="handle-grip"></div>
+                        <div class="grip-end"></div>
+                        <div class="stick-shaft"></div>
+                        <div class="sensor-pod"><span class="sensor-eye"></span><span class="sensor-eye"></span></div>
+                        <div class="power-unit"><span class="indicator-lamp"></span></div>
+                        <div class="buzzer"><i></i><i></i><i></i><i></i></div>
+                        <div class="water-sensor"></div>
+                        <div class="shaft-collar"></div>
+                        <div class="rubber-tip"></div>
+                    </div>
+                    <span class="callout callout-sensor" data-i18n="ultrasonic">ULTRASONIC SENSOR</span>
+                    <span class="callout callout-power" data-i18n="powerUnit">POWER UNIT</span>
+                    <span class="callout callout-alert" data-i18n="vibrationMotor">VIBRATION MOTOR</span>
+                    <span class="callout callout-water" data-i18n="waterDetector">WATER DETECTOR</span>
+                    <div class="stage-floor"></div>
+                </div>
+                <ul class="sr-only" id="componentList" aria-label="Illustrated component labels">
+                    <li data-i18n="ultrasonic">Ultrasonic sensor</li><li data-i18n="vibrationMotor">Vibration motor</li><li data-i18n="powerUnit">Power unit</li><li data-i18n="waterDetector">Water detector</li>
+                </ul>
+                <p class="device-caption" data-i18n="deviceCaption">Concept illustration only. Hardware is not connected.</p>
+            </section>
+        </section>
+
+        <section class="log-panel" aria-labelledby="log-heading">
+            <div class="log-heading">
+                <div>
+                    <h2 id="log-heading" data-i18n="eventLog">Event log</h2>
+                    <p data-i18n="logNote">Local session history for classifications, faults, tests, and rejected readings.</p>
+                </div>
+                <div class="log-actions">
+                    <button class="secondary-button" id="exportButton" type="button" data-i18n="export">Export CSV</button>
+                    <button class="secondary-button" id="clearButton" type="button" data-i18n="clearLog">Clear log</button>
+                    <button class="secondary-button" id="resetButton" type="button" data-i18n="resetSession">Reset session</button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table aria-labelledby="log-heading">
+                    <thead><tr><th scope="col" data-i18n="time">Local time</th><th scope="col" data-i18n="distance">Distance</th><th scope="col" data-i18n="classification">Classification</th><th scope="col" data-i18n="eventType">Event type</th><th scope="col" data-i18n="acknowledged">Acknowledged</th></tr></thead>
+                    <tbody id="eventLog"><tr class="empty-row"><td colspan="4">No events recorded yet.</td></tr></tbody>
+                </table>
+            </div>
+        </section>
+        <p class="footer-note" data-i18n="footer">Simulation only. No real-time monitoring, location tracking, emergency calling, or hardware connectivity is provided.</p>
+    </main>
+
+    <script>
+        // Demonstration-only bands; validate any real device thresholds with field testing.
+        const THRESHOLDS_CM = Object.freeze({ dangerBelow: 50, warningBelow: 100, cautionThrough: 150, maximum: 400 });
+        const STORAGE_KEY = "smartstick-sentinel-session-v1";
+        const translations = {
+            en: {
+                subtitle: "Assistive mobility safety dashboard", simIndicator: "SIMULATION MODE · No hardware connected", eyebrow: "ASSISTIVE MOBILITY / SENSOR MONITORING", pageTitle: "Sensor monitoring", simBadge: "SIMULATION MODE", deviceHeading: "DEVICE CONCEPT — SIMULATION ONLY", dashboardLabel: "Sensor monitoring dashboard", metricsLabel: "Session metrics", deviceLabel: "SmartStick concept visualization", scenario25: "25 cm · Danger", scenario75: "75 cm · Warning", scenario125: "125 cm · Caution", scenario220: "220 cm · Safe", groupScenarios: "Test scenarios", groupAlerts: "Simulated alert tests", illustratedComponents: "Illustrated component labels", storageUnavailable: "Local browser storage is unavailable.",
+                language: "Language", interfaceMode: "Interface mode", simpleMode: "Simple", technicalMode: "Technical", accessSettings: "Accessibility and alert settings", textSize: "Text size", highContrast: "High contrast", simplified: "Simplified interface", speech: "Spoken warnings (browser speech)", speechRate: "Speech rate", vibration: "Vibration feedback (device API if available)", remember: "Remember this session in this browser", localNote: "Saved records stay in this browser only. Speech and vibration depend on browser support and permission; no stick hardware is controlled.",
+                intro: "Enter a demonstration distance to see its classification. This is not a live measurement.", obstacleDetection: "Obstacle detection", distanceLabel: "Simulated distance", check: "Classify distance", rangeHint: "Accepted demonstration range: 0–400 cm. Thresholds are examples only.", hazardStatus: "Hazard status", initialAdvice: "Enter a distance and classify it to begin.", acknowledge: "Acknowledge alert", scenarios: "Reproducible scenarios", sudden: "Sudden change", invalidScenario: "Invalid input", sensorFault: "Sensor fault", thresholdNote: "Demonstration thresholds only: danger under 50 cm, warning under 100 cm, caution through 150 cm. Real-world validation is required before any safety use.", alertTest: "Alert test panel", testSafe: "Test safe alert", testCaution: "Test caution alert", testWarning: "Test warning alert", testDanger: "Test danger alert", testFault: "Test sensor fault", eventCount: "Logged events", validCount: "Valid readings", invalidCount: "Rejected input", dangerCount: "Danger events", ultrasonic: "ULTRASONIC SENSOR", powerUnit: "POWER UNIT", vibrationMotor: "VIBRATION MOTOR", waterDetector: "WATER DETECTOR", deviceCaption: "Concept illustration only. Hardware is not connected.", eventLog: "Event log", logNote: "Local session history for classifications, faults, tests, and rejected readings.", export: "Export CSV", clearLog: "Clear log", resetSession: "Reset session", time: "Local time", distance: "Distance", classification: "Classification", eventType: "Event type", acknowledged: "Acknowledged", footer: "Simulation only. No real-time monitoring, location tracking, emergency calling, or hardware connectivity is provided.", emptyLog: "No events recorded yet.", yes: "Yes", no: "No", cm: "cm", noReading: "No reading", notApplicable: "Not applicable", emptyValue: "Empty", standby: "Standby", signal: "Simulated signal", inputRejected: "Input rejected", invalidMessage: "Invalid reading rejected. Enter a number from 0 to 400 cm.", dangerMessage: "Danger: the demonstration distance is very close. Stop and assess the situation.", warningMessage: "Warning: an obstacle may be nearby. Proceed carefully.", cautionMessage: "Caution: the demonstration indicates a moderate distance.", safeMessage: "Safe classification for this demonstration reading only; this is not a guarantee of a clear path.", faultMessage: "Simulated sensor fault. No valid distance is available; this is not a safe reading.", ackMessage: "Alert acknowledged.", unsupportedSpeech: "Speech synthesis is not supported in this browser.", speechUnavailable: "Speech unavailable", vibrationLabel: "Browser vibration requested; the stick motor is not connected.", vibrationUnavailable: "Device vibration is unavailable; visual simulation only.",
+                eventCheck: "Sensor check", eventRejected: "Input rejected", eventFault: "Simulated sensor fault", eventTest: "Simulated alert test", scenario25: "25 cm · Danger", scenario75: "75 cm · Warning", scenario125: "125 cm · Caution", scenario220: "220 cm · Safe", statusNotChecked: "Not checked", statusDanger: "Danger", statusWarning: "Warning", statusCaution: "Caution", statusSafe: "Safe", statusInvalid: "Invalid input", statusFault: "Sensor fault"
+            },
+            ta: {
+                subtitle: "உதவி இயக்கப் பாதுகாப்பு பலகை", simIndicator: "உருவகப்படுத்தல் முறை · வன்பொருள் இணைக்கப்படவில்லை", eyebrow: "உதவி இயக்கம் / சென்சார் கண்காணிப்பு", pageTitle: "சென்சார் கண்காணிப்பு", simBadge: "உருவகப்படுத்தல் முறை", deviceHeading: "சாதனக் கருத்து — உருவகப்படுத்தல் மட்டும்", dashboardLabel: "சென்சார் கண்காணிப்பு பலகை", metricsLabel: "அமர்வு அளவுகள்", deviceLabel: "SmartStick கருத்து விளக்கம்", scenario25: "25 செ.மீ. · ஆபத்து", scenario75: "75 செ.மீ. · எச்சரிக்கை", scenario125: "125 செ.மீ. · கவனம்", scenario220: "220 செ.மீ. · பாதுகாப்பு", groupScenarios: "சோதனை நிலைகள்", groupAlerts: "உருவகப்படுத்திய எச்சரிக்கை சோதனைகள்", illustratedComponents: "விளக்கப்படக் கூறுகள்", storageUnavailable: "உலாவி உள்ளூர் சேமிப்பு கிடைக்கவில்லை.",
+                language: "மொழி", interfaceMode: "இடைமுக முறை", simpleMode: "எளிய", technicalMode: "தொழில்நுட்பம்", accessSettings: "அணுகல்தன்மை மற்றும் எச்சரிக்கை அமைப்புகள்", textSize: "எழுத்து அளவு", highContrast: "உயர் மாறுபாடு", simplified: "எளிமைப்படுத்திய இடைமுகம்", speech: "குரல் எச்சரிக்கை (உலாவி குரல்)", speechRate: "குரல் வேகம்", vibration: "அதிர்வு பின்னூட்டம் (சாதனம் ஆதரித்தால்)", remember: "இந்த உலாவியில் அமர்வைச் சேமி", localNote: "சேமிக்கப்பட்ட பதிவுகள் இந்த உலாவியில் மட்டுமே இருக்கும். குரல் மற்றும் அதிர்வு உலாவி ஆதரவு மற்றும் அனுமதியைச் சார்ந்தவை; குச்சி வன்பொருள் கட்டுப்படுத்தப்படாது.",
+                intro: "வகைப்பாட்டைக் காண மாதிரி தூரத்தை உள்ளிடவும். இது நேரடி அளவீடு அல்ல.", obstacleDetection: "தடைகள் கண்டறிதல்", distanceLabel: "உருவகப்படுத்திய தூரம்", check: "தூரத்தை வகைப்படுத்து", rangeHint: "ஏற்கப்படும் மாதிரி வரம்பு: 0–400 செ.மீ. எல்லைகள் எடுத்துக்காட்டு மட்டுமே.", hazardStatus: "ஆபத்து நிலை", initialAdvice: "தொடங்க தூரத்தை உள்ளிட்டு வகைப்படுத்தவும்.", acknowledge: "எச்சரிக்கையை உறுதிப்படுத்து", scenarios: "மீண்டும் இயக்கக்கூடிய சோதனைகள்", sudden: "திடீர் மாற்றம்", invalidScenario: "தவறான உள்ளீடு", sensorFault: "சென்சார் கோளாறு", thresholdNote: "மாதிரி எல்லைகள் மட்டுமே: 50 செ.மீ.க்கு கீழ் ஆபத்து, 100 செ.மீ.க்கு கீழ் எச்சரிக்கை, 150 செ.மீ. வரை கவனம். பாதுகாப்புப் பயன்பாட்டிற்கு முன் நிஜ உலகச் சோதனை அவசியம்.", alertTest: "எச்சரிக்கை சோதனை", testSafe: "பாதுகாப்பு எச்சரிக்கையைச் சோதி", testCaution: "கவன எச்சரிக்கையைச் சோதி", testWarning: "எச்சரிக்கை நிலையைச் சோதி", testDanger: "ஆபத்து எச்சரிக்கையைச் சோதி", testFault: "சென்சார் கோளாறைச் சோதி", eventCount: "பதிவான நிகழ்வுகள்", validCount: "சரியான அளவீடுகள்", invalidCount: "நிராகரித்த உள்ளீடுகள்", dangerCount: "ஆபத்து நிகழ்வுகள்", ultrasonic: "அல்ட்ராசோனிக் சென்சார்", powerUnit: "மின்சக்தி அலகு", vibrationMotor: "அதிர்வு மோட்டார்", waterDetector: "நீர் கண்டறிவி", deviceCaption: "கருத்து விளக்கம் மட்டும். வன்பொருள் இணைக்கப்படவில்லை.", eventLog: "நிகழ்வு பதிவு", logNote: "வகைப்பாடுகள், கோளாறுகள், சோதனைகள், நிராகரிக்கப்பட்ட உள்ளீடுகள் ஆகியவற்றின் உள்ளூர் அமர்வு வரலாறு.", export: "CSV ஏற்றுமதி", clearLog: "பதிவை அழி", resetSession: "அமர்வை மீட்டமை", time: "உள்ளூர் நேரம்", distance: "தூரம்", classification: "வகைப்பாடு", eventType: "நிகழ்வு வகை", acknowledged: "உறுதிப்படுத்தப்பட்டது", footer: "உருவகப்படுத்தல் மட்டுமே. நேரடி கண்காணிப்பு, இருப்பிடத் தடம், அவசர அழைப்பு அல்லது வன்பொருள் இணைப்பு இல்லை.", emptyLog: "இதுவரை நிகழ்வுகள் இல்லை.", yes: "ஆம்", no: "இல்லை", cm: "செ.மீ.", noReading: "அளவீடு இல்லை", notApplicable: "பொருந்தாது", emptyValue: "காலி", standby: "காத்திருப்பு", signal: "உருவகப்படுத்திய சிக்னல்", inputRejected: "உள்ளீடு நிராகரிக்கப்பட்டது", invalidMessage: "தவறான அளவீடு நிராகரிக்கப்பட்டது. 0 முதல் 400 செ.மீ. வரையிலான எண்ணை உள்ளிடவும்.", dangerMessage: "ஆபத்து: மாதிரி தூரம் மிகவும் அருகில் உள்ளது. நிறுத்தி நிலைமையை மதிப்பிடவும்.", warningMessage: "எச்சரிக்கை: அருகில் தடை இருக்கலாம். கவனமாகச் செல்லவும்.", cautionMessage: "கவனம்: இந்த மாதிரி நடுத்தர தூரத்தைக் காட்டுகிறது.", safeMessage: "இந்த மாதிரி அளவீட்டிற்கான பாதுகாப்பான வகைப்பாடு மட்டுமே; பாதை தெளிவாக உள்ளது என்பதற்கு உத்தரவாதமல்ல.", faultMessage: "உருவகப்படுத்திய சென்சார் கோளாறு. சரியான தூரம் இல்லை; இதை பாதுகாப்பான அளவீடாகக் கருத வேண்டாம்.", ackMessage: "எச்சரிக்கை உறுதிப்படுத்தப்பட்டது.", unsupportedSpeech: "இந்த உலாவியில் குரல் வசதி ஆதரிக்கப்படவில்லை.", speechUnavailable: "குரல் கிடைக்கவில்லை", vibrationLabel: "உலாவி அதிர்வு கோரப்பட்டது; குச்சி மோட்டார் இணைக்கப்படவில்லை.", vibrationUnavailable: "சாதன அதிர்வு இல்லை; காட்சி உருவகப்படுத்தல் மட்டும்.",
+                eventCheck: "சென்சார் சோதனை", eventRejected: "உள்ளீடு நிராகரிப்பு", eventFault: "உருவகப்படுத்திய சென்சார் கோளாறு", eventTest: "உருவகப்படுத்திய எச்சரிக்கை சோதனை", scenario25: "25 செ.மீ. · ஆபத்து", scenario75: "75 செ.மீ. · எச்சரிக்கை", scenario125: "125 செ.மீ. · கவனம்", scenario220: "220 செ.மீ. · பாதுகாப்பு", statusNotChecked: "சோதிக்கப்படவில்லை", statusDanger: "ஆபத்து", statusWarning: "எச்சரிக்கை", statusCaution: "கவனம்", statusSafe: "பாதுகாப்பு", statusInvalid: "தவறான உள்ளீடு", statusFault: "சென்சார் கோளாறு"
+            }
+        };
+        const events = [];
+        let currentStatus = "NOT CHECKED";
+        let alertAcknowledged = false;
+        let lastSpokenAt = 0;
+        let language = "en";
+        let feedbackMessageKey = "";
+        const byId = (id) => document.getElementById(id);
+        const t = (key) => translations[language][key] || translations.en[key] || key;
+        const statusKeys = { "NOT CHECKED": "statusNotChecked", DANGER: "statusDanger", WARNING: "statusWarning", CAUTION: "statusCaution", SAFE: "statusSafe", "INVALID INPUT": "statusInvalid", "SENSOR FAULT": "statusFault" };
+        const statusMessages = { DANGER: "dangerMessage", WARNING: "warningMessage", CAUTION: "cautionMessage", SAFE: "safeMessage", "INVALID INPUT": "invalidMessage", "SENSOR FAULT": "faultMessage" };
+
+        function setFeedback(key) {
+            feedbackMessageKey = key;
+            byId("feedbackState").textContent = key ? t(key) : "";
+        }
+
+        function applyLanguage() {
+            document.documentElement.lang = language === "ta" ? "ta" : "en";
+            document.querySelectorAll("[data-i18n]").forEach((element) => { element.textContent = t(element.dataset.i18n); });
+            byId("languageSelect").value = language;
+            byId("dashboardRegion").setAttribute("aria-label", t("dashboardLabel"));
+            byId("metricsRegion").setAttribute("aria-label", t("metricsLabel"));
+            byId("devicePanel").setAttribute("aria-label", t("deviceLabel"));
+            byId("accessibilityPanel").setAttribute("aria-label", t("accessSettings"));
+            byId("modeGroup").setAttribute("aria-label", t("interfaceMode"));
+            byId("scenarioGroup").setAttribute("aria-label", t("groupScenarios"));
+            byId("alertGroup").setAttribute("aria-label", t("groupAlerts"));
+            byId("componentList").setAttribute("aria-label", t("illustratedComponents"));
+            if (byId("input-error").textContent) byId("input-error").textContent = t("invalidMessage");
+            setFeedback(feedbackMessageKey);
+            byId("hazardAnnouncement").textContent = "";
+            byId("hazard").textContent = t(statusKeys[currentStatus]);
+            byId("advice").textContent = currentStatus === "NOT CHECKED" ? t("initialAdvice") : t(statusMessages[currentStatus]);
+            renderEvents();
+        }
+
+        function updateCounters() {
+            byId("totalChecks").textContent = String(events.length);
+            byId("validCount").textContent = String(events.filter((entry) => entry.eventType === "sensor-check").length);
+            byId("invalidCount").textContent = String(events.filter((entry) => entry.eventType === "rejected-input").length);
+            byId("dangerCount").textContent = String(events.filter((entry) => entry.classification === "DANGER").length);
+        }
+
+        function renderEvents() {
+            const body = byId("eventLog");
+            body.replaceChildren();
+            if (!events.length) {
+                const row = document.createElement("tr");
+                row.className = "empty-row";
+                const cell = document.createElement("td");
+                cell.colSpan = 5;
+                cell.textContent = t("emptyLog");
+                row.append(cell);
+                body.append(row);
+                updateCounters();
+                return;
+            }
+            [...events].reverse().forEach((entry) => {
+                const row = document.createElement("tr");
+                const timestamp = new Date(entry.timestamp).toLocaleString(language === "ta" ? "ta-IN" : "en-US");
+                const distance = entry.distanceKey ? t(entry.distanceKey) : Number.isFinite(Number(entry.distance)) && entry.distance !== "" ? `${entry.distance} ${t("cm")}` : entry.distance;
+                const values = [timestamp, distance, t(statusKeys[entry.classification]), t(entry.eventTypeKey), entry.acknowledged ? t("yes") : t("no")];
+                values.forEach((value, index) => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    if (index === 2) { cell.className = "log-status"; cell.dataset.status = entry.classification; }
+                    row.append(cell);
+                });
+                body.append(row);
+            });
+            updateCounters();
+        }
+
+        function saveSession() {
+            if (!byId("persistSession").checked) return;
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ events, currentStatus, alertAcknowledged, language })); } catch { setFeedback("storageUnavailable"); }
+        }
+
+        function recordEvent(distance, classification, eventType, eventTypeKey, distanceKey = null) {
+            const entry = { timestamp: new Date().toISOString(), distance: String(distance), distanceKey, classification, eventType, eventTypeKey, acknowledged: false };
+            events.push(entry);
+            if (["DANGER", "WARNING", "CAUTION", "SENSOR FAULT"].includes(classification)) {
+                alertAcknowledged = false;
+                byId("acknowledgeButton").disabled = false;
+            }
+            renderEvents();
+            saveSession();
+        }
+
+        function speakAlert(status) {
+            if (!byId("speechEnabled").checked) return;
+            if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+                setFeedback("unsupportedSpeech");
+                return;
+            }
+            const now = Date.now();
+            if (now - lastSpokenAt < 8000) return;
+            lastSpokenAt = now;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(`${t(statusKeys[status])}. ${t(statusMessages[status])}`);
+            utterance.rate = Number(byId("speechRate").value);
+            utterance.lang = language === "ta" ? "ta-IN" : "en-US";
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function provideFeedback(status) {
+            if (byId("vibrationEnabled").checked && ["DANGER", "WARNING", "SENSOR FAULT"].includes(status)) {
+                byId("devicePanel").classList.add("vibration-simulated");
+                window.setTimeout(() => byId("devicePanel").classList.remove("vibration-simulated"), 700);
+                setFeedback("vibrationLabel");
+                if (typeof navigator.vibrate === "function") {
+                    try { if (!navigator.vibrate([120, 90, 120])) setFeedback("vibrationUnavailable"); } catch { setFeedback("vibrationUnavailable"); }
+                } else setFeedback("vibrationUnavailable");
+            }
+            speakAlert(status);
+        }
+
+        function setStatus(status, announce = true) {
+            const changed = currentStatus !== status;
+            if (changed) alertAcknowledged = false;
+            currentStatus = status;
+            byId("hazard").dataset.status = status;
+            byId("hazard").textContent = t(statusKeys[status]);
+            byId("advice").textContent = status === "NOT CHECKED" ? t("initialAdvice") : t(statusMessages[status]);
+            byId("devicePanel").dataset.status = status;
+            byId("deviceLive").textContent = status === "NOT CHECKED" ? t("standby") : status === "INVALID INPUT" ? t("inputRejected") : status === "SENSOR FAULT" ? t("statusFault") : t("signal");
+            byId("acknowledgeButton").disabled = alertAcknowledged || !["DANGER", "WARNING", "CAUTION", "SENSOR FAULT"].includes(status);
+            if (announce && changed) {
+                byId("hazardAnnouncement").textContent = `${t(statusKeys[status])}. ${t(statusMessages[status])}`;
+                provideFeedback(status);
+            }
+            saveSession();
+        }
+
+        function classify(rawDistance, eventType = "sensor-check", eventTypeKey = "eventCheck") {
+            const raw = String(rawDistance).trim();
+            const distance = Number(raw);
+            byId("input-error").textContent = "";
+            if (raw === "" || !Number.isFinite(distance) || distance < 0 || distance > THRESHOLDS_CM.maximum) {
+                byId("input-error").textContent = t("invalidMessage");
+                setStatus("INVALID INPUT");
+                recordEvent(raw || "Empty", "INVALID INPUT", "rejected-input", "eventRejected", raw ? null : "emptyValue");
+                return;
+            }
+            let status = "SAFE";
+            if (distance < THRESHOLDS_CM.dangerBelow) status = "DANGER";
+            else if (distance < THRESHOLDS_CM.warningBelow) status = "WARNING";
+            else if (distance <= THRESHOLDS_CM.cautionThrough) status = "CAUTION";
+            setStatus(status);
+            recordEvent(distance, status, eventType, eventTypeKey);
+        }
+
+        function simulateFault() {
+            byId("input-error").textContent = "";
+            setStatus("SENSOR FAULT");
+            recordEvent("No reading", "SENSOR FAULT", "sensor-fault", "eventFault", "noReading");
+        }
+
+        function testAlert(status) {
+            setStatus(status);
+            recordEvent("Not applicable", status, "alert-test", "eventTest", "notApplicable");
+        }
+
+        function clearLog() {
+            events.length = 0;
+            renderEvents();
+            saveSession();
+        }
+
+        function resetSession() {
+            clearLog();
+            byId("distanceInput").value = "120";
+            byId("input-error").textContent = "";
+            byId("hazardAnnouncement").textContent = "";
+            setFeedback("");
+            if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+            setStatus("NOT CHECKED", false);
+            saveSession();
+        }
+
+        function exportLog() {
+            const headers = [t("time"), t("distance"), t("classification"), t("eventType"), t("acknowledged")];
+            const rows = [headers, ...events.map((entry) => [new Date(entry.timestamp).toLocaleString(language === "ta" ? "ta-IN" : "en-US"), entry.distanceKey ? t(entry.distanceKey) : entry.distance, t(statusKeys[entry.classification]), t(entry.eventTypeKey), entry.acknowledged ? t("yes") : t("no")])];
+            const csv = rows.map((row) => row.map((value) => {
+                const safeValue = /^[\s]*[=+@\-]/.test(value) ? `'${value}` : value;
+                return `"${String(safeValue).replaceAll('"', '""')}"`;
+            }).join(",")).join("\r\n");
+            const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "smartstick-sentinel-events.csv";
+            link.click();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        byId("checkButton").addEventListener("click", () => classify(byId("distanceInput").value));
+        byId("distanceInput").addEventListener("keydown", (event) => { if (event.key === "Enter") classify(byId("distanceInput").value); });
+        document.querySelectorAll("[data-scenario]").forEach((button) => button.addEventListener("click", () => {
+            const scenario = button.dataset.scenario;
+            if (scenario === "fault") { simulateFault(); return; }
+            if (scenario === "invalid") { byId("distanceInput").value = language === "ta" ? "தவறான உரை" : "not a number"; classify(byId("distanceInput").value); return; }
+            if (scenario === "sudden") {
+                classify("220", "sensor-check", "eventCheck");
+                classify("25", "sensor-check", "eventCheck");
+                byId("distanceInput").value = "25";
+                return;
+            }
+            byId("distanceInput").value = scenario;
+            classify(scenario);
+        }));
+        document.querySelectorAll("[data-alert-test]").forEach((button) => button.addEventListener("click", () => testAlert(button.dataset.alertTest)));
+        byId("acknowledgeButton").addEventListener("click", () => {
+            if (alertAcknowledged || !["DANGER", "WARNING", "CAUTION", "SENSOR FAULT"].includes(currentStatus)) return;
+            const latest = [...events].reverse().find((entry) => entry.classification === currentStatus && !entry.acknowledged);
+            if (latest) latest.acknowledged = true;
+            alertAcknowledged = true;
+            byId("acknowledgeButton").disabled = true;
+            if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+            setFeedback("ackMessage");
+            renderEvents();
+            saveSession();
+        });
+        byId("clearButton").addEventListener("click", clearLog);
+        byId("resetButton").addEventListener("click", resetSession);
+        byId("exportButton").addEventListener("click", exportLog);
+        byId("languageSelect").addEventListener("change", (event) => { language = event.target.value; applyLanguage(); saveSession(); });
+        byId("textSize").addEventListener("change", (event) => { document.documentElement.style.zoom = event.target.value; });
+        byId("highContrast").addEventListener("change", (event) => document.body.classList.toggle("contrast-mode", event.target.checked));
+        byId("simplified").addEventListener("change", (event) => document.body.classList.toggle("simplified", event.target.checked));
+        byId("simpleMode").addEventListener("click", () => { document.body.classList.add("simple-mode"); byId("simpleMode").setAttribute("aria-pressed", "true"); byId("technicalMode").setAttribute("aria-pressed", "false"); });
+        byId("technicalMode").addEventListener("click", () => { document.body.classList.remove("simple-mode"); byId("simpleMode").setAttribute("aria-pressed", "false"); byId("technicalMode").setAttribute("aria-pressed", "true"); });
+        byId("persistSession").addEventListener("change", (event) => {
+            if (event.target.checked) saveSession();
+            else { try { localStorage.removeItem(STORAGE_KEY); } catch { /* Storage may be blocked by browser policy. */ } }
+        });
+
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const session = JSON.parse(saved);
+                if (Array.isArray(session.events)) {
+                    events.push(...session.events.filter((entry) => entry && typeof entry.timestamp === "string" && typeof entry.classification === "string"));
+                    currentStatus = statusKeys[session.currentStatus] ? session.currentStatus : "NOT CHECKED";
+                    alertAcknowledged = session.alertAcknowledged === true;
+                    language = session.language === "ta" ? "ta" : "en";
+                    byId("persistSession").checked = true;
+                }
+            }
+        } catch { /* Ignore malformed or inaccessible local session data. */ }
+        applyLanguage();
+        setStatus(currentStatus, false);
+    </script>
+</body>
+</html>
